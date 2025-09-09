@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Morning Routine Dashboard · Churumi</title>
+  <meta name="description" content="Personal morning routine dashboard with quick links, notes, and local summaries." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Small polish */
+    ::selection { background:#6366f1; color:#fff; }
+  </style>
+</head>
+<body class="bg-black text-white">
+  <div id="root"></div>
+
+  <!-- React 18 UMD + Babel for JSX in one file -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    function GroupCard({ title, items, onOpenAll }) {
+      return (
+        <div className="rounded-2xl bg-zinc-900 p-4 shadow">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-xl font-medium">{title}</h3>
+            <button className="ml-auto px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700" onClick={onOpenAll}>Open all</button>
+          </div>
+          <ul className="grid sm:grid-cols-2 gap-2">
+            {items?.map((l, i) => (
+              <li key={i}>
+                <a className="block px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 truncate" href={l.href} target="_blank" rel="noreferrer">{l.label}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    function TimePill({ now }) {
+      const fmt = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
+      }).format(now);
+      return (
+        <div className="px-3 py-2 rounded-2xl bg-zinc-900 border border-zinc-800 text-sm">
+          {fmt} JST
+        </div>
+      );
+    }
+
+    function MorningRoutineDashboard() {
+      const [fontSize, setFontSize] = React.useState(16);
+      const [lineHeight, setLineHeight] = React.useState(1.6);
+      const [notes, setNotes] = React.useState("");
+      const [now, setNow] = React.useState(new Date());
+      const [editMode, setEditMode] = React.useState(false);
+      const [rawConfig, setRawConfig] = React.useState("");
+      const [pasteText, setPasteText] = React.useState("");
+      const [summary, setSummary] = React.useState("");
+
+      const defaultConfig = {
+        News: [
+          { label: "Reuters Top", href: "https://www.reuters.com/" },
+          { label: "The Guardian", href: "https://www.theguardian.com/" },
+          { label: "NHK NEWS WEB", href: "https://www3.nhk.or.jp/news/" },
+        ],
+        Markets: [
+          { label: "TradingView JP", href: "https://jp.tradingview.com/" },
+          { label: "Nikkei", href: "https://www.nikkei.com/markets/" },
+          { label: "Bloomberg Markets", href: "https://www.bloomberg.com/markets" },
+        ],
+        Creative: [
+          { label: "note", href: "https://note.com/" },
+          { label: "Canva", href: "https://www.canva.com/" },
+          { label: "ChatGPT", href: "https://chat.openai.com/" },
+        ],
+        Social: [
+          { label: "X (Twitter)", href: "https://x.com/" },
+          { label: "Instagram", href: "https://www.instagram.com/" },
+          { label: "YouTube Subscriptions", href: "https://www.youtube.com/feed/subscriptions" },
+        ],
+        Tools: [
+          { label: "Google Calendar", href: "https://calendar.google.com/" },
+          { label: "Obsidian Publish", href: "https://publish.obsidian.md/" },
+          { label: "Gmail", href: "https://mail.google.com/" },
+        ],
+      };
+
+      const [links, setLinks] = React.useState(() => {
+        const saved = localStorage.getItem("mr-links");
+        return saved ? JSON.parse(saved) : defaultConfig;
+      });
+
+      React.useEffect(() => {
+        const t = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(t);
+      }, []);
+
+      React.useEffect(() => {
+        localStorage.setItem("mr-links", JSON.stringify(links));
+      }, [links]);
+
+      React.useEffect(() => {
+        setNotes(localStorage.getItem("mr-notes") || "");
+      }, []);
+
+      React.useEffect(() => {
+        localStorage.setItem("mr-notes", notes);
+      }, [notes]);
+
+      function openAll(group) {
+        (links[group] || []).forEach((l) => window.open(l.href, "_blank"));
+      }
+
+      function startEdit() {
+        setRawConfig(JSON.stringify(links, null, 2));
+        setEditMode(true);
+      }
+
+      function saveEdit() {
+        try {
+          const parsed = JSON.parse(rawConfig);
+          setLinks(parsed);
+          setEditMode(false);
+        } catch (e) {
+          alert("JSON parse error. Please fix the format.");
+        }
+      }
+
+      function summarize(text) {
+        const clean = text.replace(/\\s+/g, " ").trim();
+        if (!clean) return "";
+        const sentences = clean.split(/(?<=[.!?。！？])\\s+/).filter((s) => s.length > 0);
+        const scored = sentences
+          .map((s, i) => ({
+            s,
+            score:
+              (s.match(/[.。]/g)?.length || 0) +
+              Math.min(s.length / 60, 1) +
+              (/[a-zA-Zぁ-んァ-ヶ一-龥]/.test(s) ? 0.5 : 0) +
+              (/(は|が|を|に|で|して|した|です|ます)/.test(s) ? 0.5 : 0) +
+              (i === 0 ? 0.4 : 0),
+          }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+          .map((o) => o.s);
+        return Array.from(new Set(scored)).join(" ");
+      }
+
+      return (
+        <div className="min-h-screen bg-black text-white p-6" style={{ fontSize: fontSize, lineHeight: lineHeight }}>
+          <header className="flex flex-col md:flex-row md:items-end gap-4 md:gap-8 mb-6">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-semibold">Morning Routine Dashboard</h1>
+              <p className="text-sm opacity-80">Designed for Churumi · Local only · Editable links · Autosave</p>
+            </div>
+            <div className="ml-auto flex items-center gap-3">
+              <TimePill now={now} />
+              <button className="px-3 py-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700" onClick={startEdit}>Edit Links</button>
+            </div>
+          </header>
+
+          <section className="grid md:grid-cols-3 gap-4 mb-6">
+            <div className="rounded-2xl bg-zinc-900 p-4 shadow">
+              <h2 className="text-lg mb-3">Readability</h2>
+              <div className="flex items-center gap-3 mb-2">
+                <label className="w-24 opacity-75">Font size</label>
+                <input type="range" min={14} max={22} value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full" />
+                <span className="w-10 text-right">{fontSize}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="w-24 opacity-75">Line height</label>
+                <input type="range" min={1.2} max={2} step={0.05} value={lineHeight} onChange={(e) => setLineHeight(parseFloat(e.target.value))} className="w-full" />
+                <span className="w-10 text-right">{lineHeight.toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-zinc-900 p-4 shadow">
+              <h2 className="text-lg mb-3">Quick Notes</h2>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="メモは自動保存（ローカル）" className="w-full h-28 p-3 rounded-xl bg-zinc-800 outline-none"></textarea>
+            </div>
+            <div className="rounded-2xl bg-zinc-900 p-4 shadow">
+              <h2 className="text-lg mb-3">Paste & Summarize (local)</h2>
+              <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="記事の一部をペースト → Summarize" className="w-full h-16 p-3 rounded-xl bg-zinc-800 outline-none mb-2"></textarea>
+              <div className="flex gap-2">
+                <button className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500" onClick={() => setSummary(summarize(pasteText))}>Summarize</button>
+                <button className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700" onClick={() => { setPasteText(""); setSummary(""); }}>Clear</button>
+              </div>
+              {summary && <p className="mt-3 text-sm opacity-90">{summary}</p>}
+              <p className="mt-2 text-xs opacity-60">※ 簡易アルゴリズム。AI APIは使っていません。</p>
+            </div>
+          </section>
+
+          <section className="grid lg:grid-cols-2 gap-6">
+            {Object.keys(links).map((group) => (
+              <GroupCard key={group} title={group} items={links[group]} onOpenAll={() => openAll(group)} />
+            ))}
+          </section>
+
+          {editMode && (
+            <div className="fixed inset-0 bg-black/70 grid place-items-center p-4 z-50">
+              <div className="bg-zinc-950 w-full max-w-3xl rounded-2xl shadow-xl p-4">
+                <div className="flex items-center mb-3">
+                  <h3 className="text-xl">Edit Links (JSON)</h3>
+                  <button className="ml-auto px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700" onClick={() => setEditMode(false)}>Close</button>
+                </div>
+                <textarea value={rawConfig} onChange={(e) => setRawConfig(e.target.value)} className="w-full h-72 p-3 rounded-xl bg-zinc-900 outline-none font-mono text-sm"></textarea>
+                <div className="mt-3 flex gap-2">
+                  <button className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500" onClick={() => saveEdit()}>Save</button>
+                  <button className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700" onClick={() => setRawConfig(JSON.stringify(defaultConfig, null, 2))}>Reset to default</button>
+                </div>
+                <p className="text-xs opacity-60 mt-2">※ JSONミス時は保存に失敗します。キー（News, Markets 等）と配列の形を維持してください。</p>
+              </div>
+            </div>
+          )}
+
+          <footer className="mt-10 opacity-60 text-xs">
+            <p>Local-only · No tracking · Built for Churumi. Duplicate & customize freely.</p>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<MorningRoutineDashboard />);
+  </script>
+</body>
+</html>
