@@ -2,7 +2,7 @@
   "posts": [
     {
       "date": "2026-02-04",
-      "image": "images/sample.jpg",
+      "image": "https://via.placeholder.com/800x600",
       "alt": "サンプル画像",
       "comment": "ここに一言コメント（例：卵とぶなしめじとアジで587円）",
       "tags": [
