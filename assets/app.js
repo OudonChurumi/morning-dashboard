@@ -1,5 +1,5 @@
 async function loadPosts() {
-  const res = await fetch('./posts/posts.json', { cache: 'no-store' });
+  const res = await fetch('/morning-dashboard/posts/posts.json, { cache: 'no-store' });
   if (!res.ok) throw new Error('posts.json が読めません');
   const data = await res.json();
   if (!Array.isArray(data.posts)) throw new Error('posts.json の形式が不正です');
