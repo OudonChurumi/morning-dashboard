@@ -20,7 +20,7 @@
         app.innerHTML = posts.map(p => `
           <div style="margin-bottom:1.5em;">
             <div><strong>${p.date}</strong></div>
-            <img src="${p.image}" alt="${p.alt || ''}" style="max-width:100%;height:auto;">
+            <img src="${p.image}" alt="${p.alt || ''}" style="width:100%;height:300px;object-fit:cover;">
             <div>${p.comment}</div>
           </div>
         `).join("");
