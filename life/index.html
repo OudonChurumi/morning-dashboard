@@ -23,7 +23,7 @@
         `).join("");
       })
       .catch(err => {
-        document.getElementById("app").textContent = "読み込み失敗";
+        document.getElementById("app").textContent = "読み込み失敗: " + err;
         console.error(err);
       });
   </script>
