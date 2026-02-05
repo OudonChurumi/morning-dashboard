@@ -11,7 +11,10 @@
 
   <script>
     fetch("../posts/posts.json")
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
       .then(posts => {
         const app = document.getElementById("app");
         app.innerHTML = posts.map(p => `
@@ -23,9 +26,10 @@
         `).join("");
       })
       .catch(err => {
-        document.getElementById("app").textContent = "読み込み失敗: " + err;
+        document.getElementById("app").textContent = "読み込み失敗: " + err.message;
         console.error(err);
       });
   </script>
 </body>
 </html>
+
