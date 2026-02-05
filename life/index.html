@@ -15,10 +15,10 @@
       .then(posts => {
         const app = document.getElementById("app");
         app.innerHTML = posts.map(p => `
-          <div style="margin-bottom:1em;">
-            <strong>${p.title}</strong><br>
-            <small>${p.datetime}</small><br>
-            ${p.comment}
+          <div style="margin-bottom:1.5em;">
+            <div><strong>${p.date}</strong></div>
+            <img src="${p.image}" alt="${p.alt || ''}" style="max-width:100%;height:auto;">
+            <div>${p.comment}</div>
           </div>
         `).join("");
       })
