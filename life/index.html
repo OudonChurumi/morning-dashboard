@@ -7,6 +7,25 @@
 </head>
 <body>
   <h1>LifeLog</h1>
-  <p>ここに写真＋コメントのログを表示する。</p>
+  <div id="app">読み込み中…</div>
+
+  <script>
+    fetch("../posts/posts.json")
+      .then(r => r.json())
+      .then(posts => {
+        const app = document.getElementById("app");
+        app.innerHTML = posts.map(p => `
+          <div style="margin-bottom:1em;">
+            <strong>${p.title}</strong><br>
+            <small>${p.datetime}</small><br>
+            ${p.comment}
+          </div>
+        `).join("");
+      })
+      .catch(err => {
+        document.getElementById("app").textContent = "読み込み失敗";
+        console.error(err);
+      });
+  </script>
 </body>
 </html>
